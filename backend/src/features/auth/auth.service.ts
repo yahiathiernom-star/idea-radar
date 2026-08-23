@@ -2,7 +2,8 @@ import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 
 import { prisma } from '../../lib/prisma.js';
-import type { RegisterBody } from './auth.schema.js';
+import { signAccessToken } from './auth.jwt.js';
+import type { LoginBody, RegisterBody } from './auth.schema.js';
 
 const passwordSaltRounds = 12;
 
@@ -10,6 +11,13 @@ export class EmailAlreadyUsedError extends Error {
   constructor() {
     super('Email already used');
     this.name = 'EmailAlreadyUsedError';
+  }
+}
+
+export class InvalidLoginCredentialsError extends Error {
+  constructor() {
+    super('Invalid login credentials');
+    this.name = 'InvalidLoginCredentialsError';
   }
 }
 
@@ -48,4 +56,42 @@ export async function registerUser(input: RegisterBody) {
 
     throw error;
   }
+}
+
+export async function loginUser(input: LoginBody) {
+  const user = await prisma.user.findUnique({
+    where: {
+      email: input.email,
+    },
+    select: {
+      id: true,
+      email: true,
+      passwordHash: true,
+      createdAt: true,
+    },
+  });
+
+  if (!user) {
+    throw new InvalidLoginCredentialsError();
+  }
+
+  const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
+
+  if (!isPasswordValid) {
+    throw new InvalidLoginCredentialsError();
+  }
+
+  const accessToken = signAccessToken({
+    userId: user.id,
+    email: user.email,
+  });
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      createdAt: user.createdAt,
+    },
+    accessToken,
+  };
 }

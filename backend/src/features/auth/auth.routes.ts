@@ -1,8 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 
-import { registerBodySchema } from './auth.schema.js';
-import { EmailAlreadyUsedError, registerUser } from './auth.service.js';
+import { loginBodySchema, registerBodySchema } from './auth.schema.js';
+import {
+  EmailAlreadyUsedError,
+  InvalidLoginCredentialsError,
+  loginUser,
+  registerUser,
+} from './auth.service.js';
 
 export function registerAuthRoutes(app: FastifyInstance) {
   app.post('/auth/register', async (request, reply) => {
@@ -45,6 +50,48 @@ export function registerAuthRoutes(app: FastifyInstance) {
       return reply.status(500).send({
         error: 'InternalServerError',
         message: 'Unable to register user',
+      });
+    }
+  });
+
+  app.post('/auth/login', async (request, reply) => {
+    const parsedBody = loginBodySchema.safeParse(request.body);
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        error: 'ValidationError',
+        message: 'Invalid login payload',
+        issues: parsedBody.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+    }
+
+    try {
+      const result = await loginUser(parsedBody.data);
+
+      return await reply.status(200).send(result);
+    } catch (error) {
+      if (error instanceof InvalidLoginCredentialsError) {
+        return reply.status(401).send({
+          error: 'InvalidCredentials',
+          message: 'Invalid email or password',
+        });
+      }
+
+      if (error instanceof ZodError) {
+        return reply.status(400).send({
+          error: 'ValidationError',
+          message: 'Invalid login payload',
+        });
+      }
+
+      request.log.error(error);
+
+      return reply.status(500).send({
+        error: 'InternalServerError',
+        message: 'Unable to login user',
       });
     }
   });
