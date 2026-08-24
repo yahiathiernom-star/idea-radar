@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 
+import { authenticateUser } from './auth.middleware.js';
 import { loginBodySchema, registerBodySchema } from './auth.schema.js';
 import {
   EmailAlreadyUsedError,
@@ -94,5 +95,20 @@ export function registerAuthRoutes(app: FastifyInstance) {
         message: 'Unable to login user',
       });
     }
+  });
+
+  app.get('/auth/me', { preHandler: authenticateUser }, async (request, reply) => {
+    const auth = request.auth;
+
+    if (!auth) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'Authentication required',
+      });
+    }
+
+    return await reply.status(200).send({
+      user: auth.user,
+    });
   });
 }

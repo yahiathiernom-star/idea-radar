@@ -95,3 +95,15 @@ export async function loginUser(input: LoginBody) {
     accessToken,
   };
 }
+
+export async function findPublicUserById(userId: string) {
+  return await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+    select: {
+      id: true,
+      email: true,
+    },
+  });
+}
