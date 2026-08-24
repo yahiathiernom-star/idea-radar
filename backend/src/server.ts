@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 
 import { registerAuthRoutes } from './features/auth/auth.routes.js';
+import { registerIdeaRoutes } from './features/ideas/idea.routes.js';
 
 export function buildApp() {
   const app = Fastify({
@@ -14,6 +15,7 @@ export function buildApp() {
   });
 
   registerAuthRoutes(app);
+  registerIdeaRoutes(app);
 
   return app;
 }
