@@ -2,9 +2,35 @@ import type { FastifyInstance } from 'fastify';
 
 import { authenticateUser } from '../auth/auth.middleware.js';
 import { createIdeaBodySchema } from './idea.schema.js';
-import { createIdea } from './idea.service.js';
+import { createIdea, listIdeasByUserId } from './idea.service.js';
 
 export function registerIdeaRoutes(app: FastifyInstance) {
+  app.get('/ideas', { preHandler: authenticateUser }, async (request, reply) => {
+    const auth = request.auth;
+
+    if (!auth) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'Authentication required',
+      });
+    }
+
+    try {
+      const ideas = await listIdeasByUserId(auth.user.id);
+
+      return await reply.status(200).send({
+        ideas,
+      });
+    } catch (error) {
+      request.log.error(error);
+
+      return reply.status(500).send({
+        error: 'InternalServerError',
+        message: 'Unable to list ideas',
+      });
+    }
+  });
+
   app.post('/ideas', { preHandler: authenticateUser }, async (request, reply) => {
     const auth = request.auth;
 
