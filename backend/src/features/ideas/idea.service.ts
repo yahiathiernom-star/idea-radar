@@ -18,3 +18,22 @@ export async function createIdea(input: CreateIdeaBody, userId: string) {
     },
   });
 }
+
+export async function listIdeasByUserId(userId: string) {
+  return await prisma.idea.findMany({
+    where: {
+      userId,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      userId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+}
